@@ -1,17 +1,61 @@
-Asunto: Solicitud de apoyo para identificar causa de error en inicio de sesión en plataforma "Ecosistemas"
+@Modifying
+    @Transactional // Asegúrate de que la operación esté en una transacción
+    @Query(value = "INSERT INTO CO_EXTERNAL_SALE_LOG (DOCUMENT_NUMBER, CANAL, USER_IP, OFFICE, REGION, TRANSACTION_DATE, PRODUCT, ADVISOR_CODE, FINANCIAL_PRODUCT, FRANCHISE, CELLPHONE, OTP, REGION_CODE, OTP_VALIDATION_DATE, SALE_TYPE, BROWSER, DEVICE_TYPE) "
+                 + "VALUES (:documentNumber, :canal, :userIp, :office, :region, :transactionDate, :product, :advisorCode, :financialProduct, :franchise, :cellphone, :otp, :regionCode, :otpValidationDate, :saleType, :browser, :deviceType)",
+           nativeQuery = true)
+    void insertSalesLog(
+            @Param("documentNumber") int documentNumber,
+            @Param("canal") String canal,
+            @Param("userIp") String userIp,
+            @Param("office") String office,
+            @Param("region") String region,
+            @Param("transactionDate") LocalDateTime transactionDate,
+            @Param("product") int product,
+            @Param("advisorCode") int advisorCode,
+            @Param("financialProduct") String financialProduct,
+            @Param("franchise") String franchise,
+            @Param("cellphone") String cellphone,
+            @Param("otp") int otp,
+            @Param("regionCode") int regionCode,
+            @Param("otpValidationDate") LocalDateTime otpValidationDate,
+            @Param("saleType") String saleType,
+            @Param("browser") String browser,
+            @Param("deviceType") String deviceType);
+}
+Paso 2: Implementar el Servicio
+Luego, puedes llamar a este método desde tu servicio para realizar la inserción. Aquí tienes un ejemplo:
 
-Estimado/a [Nombre del destinatario],
+java
+Copy code
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-Espero que te encuentres bien. Estoy escribiendo para solicitar tu apoyo en la revisión de un problema que estamos enfrentando en la plataforma "Ecosistemas" relacionado con el inicio de sesión.
+@Service
+public class SalesLogService {
 
-Actualmente, al intentar iniciar sesión, se muestra el mensaje "no tiene seguro activo". Hasta donde entiendo, nosotros desde WAS, mediante un servicio Tibco, entregamos la información necesaria para la activación del seguro. Sin embargo, esto no parece estar funcionando como se espera.
+    @Autowired
+    private SalesLogRepository salesLogRepository;
 
-Te explico brevemente el contexto:
-
-Se nos indicó que el error podría estar relacionado con un valor de cero en el JSON de "Sessionholder", por lo que enviamos el valor 99, pero esto no resolvió el problema.
-También se mencionó que el error podría deberse a que la venta no estaba en la base de datos ODS, pero las personas encargadas de pruebas nos informaron que esto no es necesario y, de hecho, para otros socios el proceso funciona sin el cargue en ODS.
-Dado que hemos agotado las opciones que teníamos a nuestro alcance y el problema persiste, me gustaría solicitar la asistencia de un experto de la plataforma, preferiblemente alguien de mock, para ayudarnos a identificar la verdadera razón por la que se rechaza el inicio de sesión.
-
-Agradezco de antemano tu ayuda y quedo atento a cualquier orientación que nos puedas brindar.
-
-Saludos cordiales,
+    @Transactional
+    public void insertarSalesLog(SalesLog salesLog) {
+        salesLogRepository.insertSalesLog(
+                salesLog.getDocumentNumber(),
+                salesLog.getCanal(),
+                salesLog.getUserIp(),
+                salesLog.getOffice(),
+                salesLog.getRegion(),
+                salesLog.getTransactionDate(),
+                salesLog.getProduct(),
+                salesLog.getAdvisorCode(),
+                salesLog.getFinancialProduct(),
+                salesLog.getFranchise(),
+                salesLog.getCellphone(),
+                salesLog.getOtp(),
+                salesLog.getRegionCode(),
+                salesLog.getOtpValidationDate(),
+                salesLog.getSaleType(),
+                salesLog.getBrowser(),
+                salesLog.getDeviceType());
+    }
+}
