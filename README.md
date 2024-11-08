@@ -1,53 +1,62 @@
-import org.json.JSONObject;
-import org.json.JSONArray;
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Method;
+import java.lang.reflect.Type;
+import java.util.List;
+import java.util.Map;
 
 public class Validador {
 
-    public static boolean validar(JSONObject reglas, Object objeto, boolean esPropiedadPoliza) throws Exception {
-        JSONObject fieldValidation = reglas.getJSONObject("field_validation");
+    public static boolean validar(String jsonConfig, Object objeto, boolean esPropiedadPoliza) {
+        Gson gson = new Gson();
 
-        // Validar campos obligatorios
-        JSONArray requiredFields = fieldValidation.getJSONArray("required_fields");
-        if (!validarCampos(requiredFields, objeto)) {
+        // Parsear el JSON de configuración
+        JsonObject jsonObject = JsonParser.parseString(jsonConfig).getAsJsonObject();
+        
+        // Obtener el valor de "field_validation"
+        JsonObject fieldValidation = jsonObject.getAsJsonObject("field_validation");
+
+        // Convertir las listas de campos desde el JSON
+        Type type = new TypeToken<List<String>>() {}.getType();
+        List<String> requiredFields = gson.fromJson(fieldValidation.get("required_fields"), type);
+        List<String> ownershipCheckFields = gson.fromJson(fieldValidation.get("ownership_check_fields"), type);
+
+        try {
+            // Validar los campos obligatorios
+            for (String field : requiredFields) {
+                // Construir el nombre del getter
+                String getterName = "get" + field.substring(0, 1).toUpperCase() + field.substring(1);
+                Method getterMethod = objeto.getClass().getMethod(getterName);
+
+                Object value = getterMethod.invoke(objeto);
+                if (value == null) {
+                    System.out.println("El campo " + field + " es obligatorio y está vacío o nulo.");
+                    return false;
+                }
+            }
+
+            // Validar los campos de verificación de propiedad si es necesario
+            if (esPropiedadPoliza) {
+                for (String field : ownershipCheckFields) {
+                    String getterName = "get" + field.substring(0, 1).toUpperCase() + field.substring(1);
+                    Method getterMethod = objeto.getClass().getMethod(getterName);
+
+                    Object value = getterMethod.invoke(objeto);
+                    if (value == null) {
+                        System.out.println("El campo " + field + " es obligatorio para la verificación de propiedad y está vacío o nulo.");
+                        return false;
+                    }
+                }
+            }
+
+        } catch (NoSuchMethodException | IllegalAccessException | java.lang.reflect.InvocationTargetException e) {
+            e.printStackTrace();
             return false;
         }
 
-        // Validar campos generales
-        JSONArray validationFields = fieldValidation.getJSONArray("validation_fields");
-        if (!validarCampos(validationFields, objeto)) {
-            return false;
-        }
-
-        // Validación adicional para propiedad de póliza
-        if (esPropiedadPoliza) {
-            JSONArray ownershipFields = fieldValidation.getJSONArray("ownership_check_fields");
-            if (!validarCampos(ownershipFields, objeto)) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static boolean validarCampos(JSONArray campos, Object objeto) throws Exception {
-        for (int i = 0; i < campos.length(); i++) {
-            String campo = campos.getString(i);
-
-            // Genera el nombre del getter correspondiente (ejemplo: getFirstName para el campo "firstName")
-            String getterName = "get" + campo.substring(0, 1).toUpperCase() + campo.substring(1);
-
-            // Obtiene el método getter y lo invoca para obtener el valor del campo
-            Method getter = objeto.getClass().getMethod(getterName);
-            Object valor = getter.invoke(objeto);
-
-            // Validación: verifica si el campo es null o vacío
-            if (valor == null || valor.toString().isEmpty()) {
-                System.out.println("El campo " + campo + " es obligatorio y no puede estar vacío.");
-                return false;
-            }
-        }
         return true;
     }
 }
