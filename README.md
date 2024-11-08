@@ -57,6 +57,52 @@ public class Validador {
             return false;
         }
 
+
+
+
+
+
+
+
+        public List<List<MiObjeto>> procesarArchivoPorLotes(String rutaArchivo, int tamañoLote, String rutaErrores) {
+        List<List<MiObjeto>> lotes = new ArrayList<>();
+
+        try (BufferedReader br = new BufferedReader(new FileReader(rutaArchivo));
+             FileWriter escritorErrores = new FileWriter(rutaErrores, true)) {  // Abrir en modo append
+
+            String linea;
+            List<MiObjeto> loteActual = new ArrayList<>();
+
+            while ((linea = br.readLine()) != null) {
+                String[] atributos = linea.split("\\|");
+                MiObjeto objeto = new MiObjeto(atributos[0], atributos[1], atributos[2]);
+
+                if (objeto.esValido()) {
+                    loteActual.add(objeto);
+                } else {
+                    // Escribir la línea inválida en el archivo de errores
+                    escritorErrores.write(linea + System.lineSeparator());
+                }
+
+                if (loteActual.size() == tamañoLote) {
+                    lotes.add(new ArrayList<>(loteActual));
+                    loteActual.clear();
+                }
+            }
+
+            // Agregar el último lote si tiene elementos
+            if (!loteActual.isEmpty()) {
+                lotes.add(loteActual);
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();  // Manejar excepción según sea necesario
+        }
+
+        return lotes;
+    }
+}
+
         return true;
     }
 }
