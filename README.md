@@ -1,53 +1,38 @@
-import java.io.*;
-import java.util.ArrayList;
-import java.util.List;
+-- Create schema
+CREATE SCHEMA BUSSINESSRULE;
 
-public class IndexadorArchivo {
-    public static List<Long> generarIndices(String rutaArchivo) {
-        List<Long> indices = new ArrayList<>();
+-- Create table RiskTypes
+CREATE TABLE BUSSINESSRULE.BUSRULE_MT_RISK_TYPES (
+    RISK_TYPE_ID INT PRIMARY KEY,
+    NAME VARCHAR(255) NOT NULL,
+    CAP DECIMAL(10, 2),
+    DESCRIPTION VARCHAR(255),
+    STATUS VARCHAR(50)
+);
 
-        try (BufferedReader br = new BufferedReader(new FileReader(rutaArchivo))) {
-            long pos = 0;
-            String linea;
+-- Create table Dimensions
+CREATE TABLE BUSSINESSRULE.BUSRULE_MT_DIMENSIONS (
+    DIMENSION_ID INT PRIMARY KEY,
+    NAME VARCHAR(255) NOT NULL,
+    DESCRIPTION VARCHAR(255),
+    STATUS VARCHAR(50)
+);
 
-            while ((linea = br.readLine()) != null) {
-                indices.add(pos);
-                pos += linea.length() + System.lineSeparator().length();
-            }
+-- Create table IncomeRange
+CREATE TABLE BUSSINESSRULE.BUSRULE_MT_INCOME_RANGE (
+    INCOME_RANGE_ID INT PRIMARY KEY,
+    MIN_INCOME DECIMAL(10, 2),
+    MAX_INCOME DECIMAL(10, 2)
+);
 
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-
-        return indices;
-    }
-}
-Acceder directamente usando el índice:
-
-java
-Copy code
-public List<String> procesarLoteConIndices(String rutaArchivo, List<Long> indices, int tamañoLote, String rutaErrores, int numeroLote) {
-    List<String> loteActual = new ArrayList<>();
-
-    int lineaInicial = (numeroLote - 1) * tamañoLote;
-
-    try (RandomAccessFile raf = new RandomAccessFile(rutaArchivo, "r");
-         FileWriter escritorErrores = new FileWriter(rutaErrores, true)) {
-
-        for (int i = lineaInicial; i < lineaInicial + tamañoLote && i < indices.size(); i++) {
-            raf.seek(indices.get(i)); // Saltar a la posición exacta
-            String linea = raf.readLine();
-
-            if (esValido(linea)) {
-                loteActual.add(linea);
-            } else {
-                escritorErrores.write(linea + System.lineSeparator());
-            }
-        }
-
-    } catch (IOException e) {
-        e.printStackTrace();
-    }
-
-    return loteActual;
-}
+-- Create table CapDimension
+CREATE TABLE BUSSINESSRULE.BUSRULE_MT_CAP_DIMENSION (
+    CAP_DIMENSION_ID INT PRIMARY KEY,
+    DIMENSION_ID INT NOT NULL,
+    RISK_TYPE_ID INT NOT NULL,
+    PARTNER_ID INT,
+    INCOME_RANGE_ID INT NOT NULL,
+    FOREIGN KEY (DIMENSION_ID) REFERENCES BUSSINESSRULE.BUSRULE_MT_DIMENSIONS(DIMENSION_ID),
+    FOREIGN KEY (RISK_TYPE_ID) REFERENCES BUSSINESSRULE.BUSRULE_MT_RISK_TYPES(RISK_TYPE_ID),
+    FOREIGN KEY (INCOME_RANGE_ID) REFERENCES BUSSINESSRULE.BUSRULE_MT_INCOME_RANGE(INCOME_RANGE_ID)
+);
