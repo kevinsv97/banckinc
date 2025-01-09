@@ -1,38 +1,48 @@
--- Create schema
-CREATE SCHEMA BUSSINESSRULE;
+CREATE OR REPLACE FUNCTION GET_RISK_JSON(
+    p_dimension IN VARCHAR2 DEFAULT NULL,
+    p_income IN NUMBER
+) RETURN CLOB IS
+    v_json CLOB;
+BEGIN
+    -- Construcción del JSON utilizando JSON_ARRAYAGG y JSON_OBJECT
+    SELECT JSON_ARRAYAGG(
+               JSON_OBJECT(
+                   'dimension' VALUE d.dimension_name,
+                   'income' VALUE TO_CHAR(p_income),
+                   'rank' VALUE (
+                       SELECT MIN_INCOME || ' - ' || MAX_INCOME
+                       FROM BUSRULE_MT_INCOME_RANGE
+                       WHERE p_income BETWEEN MIN_INCOME AND MAX_INCOME
+                   ),
+                   'riesgos' VALUE (
+                       SELECT JSON_ARRAYAGG(
+                                  JSON_OBJECT(
+                                      'idTipoRiesgo' VALUE r.ID_TIPO_RIESGO,
+                                      'name' VALUE r.NAME,
+                                      'tope' VALUE r.TOPE
+                                  )
+                              )
+                       FROM BUSRULE_MT_CAP_DIMENSION cd
+                       JOIN BUSRULE_MT_RISK_TYPES r ON cd.RISK_TYPE_ID = r.RISK_TYPE_ID
+                       WHERE cd.DIMENSION_ID = d.dimension_id
+                         AND cd.INCOME_RANGE_ID = (
+                             SELECT RANK_ID
+                             FROM BUSRULE_MT_INCOME_RANGE
+                             WHERE p_income BETWEEN MIN_INCOME AND MAX_INCOME
+                         )
+                   )
+               )
+           )
+    INTO v_json
+    FROM (
+        SELECT DIMENSION_ID, NAME AS dimension_name
+        FROM BUSRULE_MT_DIMENSIONS
+        WHERE p_dimension IS NULL OR NAME = p_dimension
+    ) d;
 
--- Create table RiskTypes
-CREATE TABLE BUSSINESSRULE.BUSRULE_MT_RISK_TYPES (
-    RISK_TYPE_ID INT PRIMARY KEY,
-    NAME VARCHAR(255) NOT NULL,
-    CAP DECIMAL(10, 2),
-    DESCRIPTION VARCHAR(255),
-    STATUS VARCHAR(50)
-);
-
--- Create table Dimensions
-CREATE TABLE BUSSINESSRULE.BUSRULE_MT_DIMENSIONS (
-    DIMENSION_ID INT PRIMARY KEY,
-    NAME VARCHAR(255) NOT NULL,
-    DESCRIPTION VARCHAR(255),
-    STATUS VARCHAR(50)
-);
-
--- Create table IncomeRange
-CREATE TABLE BUSSINESSRULE.BUSRULE_MT_INCOME_RANGE (
-    INCOME_RANGE_ID INT PRIMARY KEY,
-    MIN_INCOME DECIMAL(10, 2),
-    MAX_INCOME DECIMAL(10, 2)
-);
-
--- Create table CapDimension
-CREATE TABLE BUSSINESSRULE.BUSRULE_MT_CAP_DIMENSION (
-    CAP_DIMENSION_ID INT PRIMARY KEY,
-    DIMENSION_ID INT NOT NULL,
-    RISK_TYPE_ID INT NOT NULL,
-    PARTNER_ID INT,
-    INCOME_RANGE_ID INT NOT NULL,
-    FOREIGN KEY (DIMENSION_ID) REFERENCES BUSSINESSRULE.BUSRULE_MT_DIMENSIONS(DIMENSION_ID),
-    FOREIGN KEY (RISK_TYPE_ID) REFERENCES BUSSINESSRULE.BUSRULE_MT_RISK_TYPES(RISK_TYPE_ID),
-    FOREIGN KEY (INCOME_RANGE_ID) REFERENCES BUSSINESSRULE.BUSRULE_MT_INCOME_RANGE(INCOME_RANGE_ID)
-);
+    RETURN v_json;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RETURN '[]'; -- JSON vacío si no hay resultados
+END GET_RISK_JSON;
+/
