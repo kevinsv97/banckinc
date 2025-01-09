@@ -1,32 +1,27 @@
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-import lombok.NoArgsConstructor;
+-- Inserts para la tabla BUSRULE_MT_DIMENSIONS
+INSERT INTO BUSRULE_MT_DIMENSIONS (DIMENSION_ID, NAME, DESCRIPTION, STATUS)
+VALUES (1, 'Salud', 'Dimensión relacionada con la salud', 'Active');
 
-import java.util.List;
+INSERT INTO BUSRULE_MT_DIMENSIONS (DIMENSION_ID, NAME, DESCRIPTION, STATUS)
+VALUES (2, 'Educación', 'Dimensión relacionada con la educación', 'Active');
 
-@Getter
-@Setter
-@ToString
-@NoArgsConstructor
-public class DimensionResponse {
-    private String dimension;
-    private String income;
-    private String rank;
-    private List<Risk> riesgos;
-}
+-- Inserts para la tabla BUSRULE_MT_RISK_TYPES
+INSERT INTO BUSRULE_MT_RISK_TYPES (RISK_TYPE_ID, NAME, CAP, DESCRIPTION, STATUS)
+VALUES (101, 'seriousIllness', 100000000, 'Enfermedad grave', 'Active');
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
-import lombok.NoArgsConstructor;
+INSERT INTO BUSRULE_MT_RISK_TYPES (RISK_TYPE_ID, NAME, CAP, DESCRIPTION, STATUS)
+VALUES (102, 'schoolFees', 50000000, 'Gastos escolares', 'Active');
 
-@Getter
-@Setter
-@ToString
-@NoArgsConstructor
-public class Risk {
-    private String idTipoRiesgo;
-    private String name;
-    private String tope;
-}
+-- Inserts para la tabla BUSRULE_MT_INCOME_RANGE
+INSERT INTO BUSRULE_MT_INCOME_RANGE (INCOME_RANGE_ID, MIN_INCOME, MAX_INCOME)
+VALUES (201, 1000001, 3000000);
+
+INSERT INTO BUSRULE_MT_INCOME_RANGE (INCOME_RANGE_ID, MIN_INCOME, MAX_INCOME)
+VALUES (202, 3000001, 5000000);
+
+-- Inserts para la tabla BUSRULE_MT_CAP_DIMENSION
+INSERT INTO BUSRULE_MT_CAP_DIMENSION (CAP_DIMENSION_ID, DIMENSION_ID, RISK_TYPE_ID, PARTNER_ID, INCOME_RANGE_ID)
+VALUES (301, 1, 101, NULL, 201);
+
+INSERT INTO BUSRULE_MT_CAP_DIMENSION (CAP_DIMENSION_ID, DIMENSION_ID, RISK_TYPE_ID, PARTNER_ID, INCOME_RANGE_ID)
+VALUES (302, 2, 102, NULL, 201);
