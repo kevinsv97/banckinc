@@ -1,27 +1,50 @@
--- Inserts para la tabla BUSRULE_MT_DIMENSIONS
-INSERT INTO BUSRULE_MT_DIMENSIONS (DIMENSION_ID, NAME, DESCRIPTION, STATUS)
-VALUES (1, 'Salud', 'Dimensión relacionada con la salud', 'Active');
+CREATE OR REPLACE FUNCTION GET_RISK_JSON(
+    p_dimension IN VARCHAR2 DEFAULT NULL,
+    p_income IN NUMBER,
+    p_partner_id IN NUMBER DEFAULT NULL
+) RETURN CLOB IS
+    v_json CLOB;
+BEGIN
+    -- Construcción del JSON utilizando JSON_ARRAYAGG y JSON_OBJECT
+    SELECT JSON_ARRAYAGG(
+               JSON_OBJECT(
+                   'dimension' VALUE d.dimension_name,
+                   'income' VALUE TO_CHAR(p_income),
+                   'rank' VALUE (
+                       SELECT MIN_INCOME || ' - ' || MAX_INCOME
+                       FROM BUSRULE_MT_INCOME_RANGE
+                       WHERE p_income BETWEEN MIN_INCOME AND MAX_INCOME
+                   ),
+                   'riesgos' VALUE (
+                       SELECT JSON_ARRAYAGG(
+                                  JSON_OBJECT(
+                                      'idTipoRiesgo' VALUE r.ID_TIPO_RIESGO,
+                                      'name' VALUE r.NAME,
+                                      'tope' VALUE r.TOPE
+                                  )
+                              )
+                       FROM BUSRULE_MT_CAP_DIMENSION cd
+                       JOIN BUSRULE_MT_RISK_TYPES r ON cd.RISK_TYPE_ID = r.RISK_TYPE_ID
+                       WHERE cd.DIMENSION_ID = d.dimension_id
+                         AND cd.INCOME_RANGE_ID = (
+                             SELECT RANK_ID
+                             FROM BUSRULE_MT_INCOME_RANGE
+                             WHERE p_income BETWEEN MIN_INCOME AND MAX_INCOME
+                         )
+                         AND (p_partner_id IS NULL OR cd.PARTNER_ID = p_partner_id)
+                   )
+               )
+           )
+    INTO v_json
+    FROM (
+        SELECT DIMENSION_ID, NAME AS dimension_name
+        FROM BUSRULE_MT_DIMENSIONS
+        WHERE p_dimension IS NULL OR NAME = p_dimension
+    ) d;
 
-INSERT INTO BUSRULE_MT_DIMENSIONS (DIMENSION_ID, NAME, DESCRIPTION, STATUS)
-VALUES (2, 'Educación', 'Dimensión relacionada con la educación', 'Active');
-
--- Inserts para la tabla BUSRULE_MT_RISK_TYPES
-INSERT INTO BUSRULE_MT_RISK_TYPES (RISK_TYPE_ID, NAME, CAP, DESCRIPTION, STATUS)
-VALUES (101, 'seriousIllness', 100000000, 'Enfermedad grave', 'Active');
-
-INSERT INTO BUSRULE_MT_RISK_TYPES (RISK_TYPE_ID, NAME, CAP, DESCRIPTION, STATUS)
-VALUES (102, 'schoolFees', 50000000, 'Gastos escolares', 'Active');
-
--- Inserts para la tabla BUSRULE_MT_INCOME_RANGE
-INSERT INTO BUSRULE_MT_INCOME_RANGE (INCOME_RANGE_ID, MIN_INCOME, MAX_INCOME)
-VALUES (201, 1000001, 3000000);
-
-INSERT INTO BUSRULE_MT_INCOME_RANGE (INCOME_RANGE_ID, MIN_INCOME, MAX_INCOME)
-VALUES (202, 3000001, 5000000);
-
--- Inserts para la tabla BUSRULE_MT_CAP_DIMENSION
-INSERT INTO BUSRULE_MT_CAP_DIMENSION (CAP_DIMENSION_ID, DIMENSION_ID, RISK_TYPE_ID, PARTNER_ID, INCOME_RANGE_ID)
-VALUES (301, 1, 101, NULL, 201);
-
-INSERT INTO BUSRULE_MT_CAP_DIMENSION (CAP_DIMENSION_ID, DIMENSION_ID, RISK_TYPE_ID, PARTNER_ID, INCOME_RANGE_ID)
-VALUES (302, 2, 102, NULL, 201);
+    RETURN v_json;
+EXCEPTION
+    WHEN NO_DATA_FOUND THEN
+        RETURN '[]'; -- JSON vacío si no hay resultados
+END GET_RISK_JSON;
+/
