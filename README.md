@@ -1,7 +1,7 @@
 CREATE OR REPLACE FUNCTION GET_RISK_JSON(
     p_dimension IN VARCHAR2 DEFAULT NULL,
     p_income IN NUMBER,
-    p_partner_id IN NUMBER DEFAULT NULL
+    p_partner_id IN NUMBER
 ) RETURN CLOB IS
     v_json CLOB;
 BEGIN
@@ -31,15 +31,17 @@ BEGIN
                              FROM BUSRULE_MT_INCOME_RANGE
                              WHERE p_income BETWEEN MIN_INCOME AND MAX_INCOME
                          )
-                         AND (p_partner_id IS NULL OR cd.PARTNER_ID = p_partner_id)
+                         AND cd.PARTNER_ID = p_partner_id
                    )
                )
            )
     INTO v_json
     FROM (
-        SELECT DIMENSION_ID, NAME AS dimension_name
-        FROM BUSRULE_MT_DIMENSIONS
-        WHERE p_dimension IS NULL OR NAME = p_dimension
+        SELECT DISTINCT d.DIMENSION_ID, d.NAME AS dimension_name
+        FROM BUSRULE_MT_DIMENSIONS d
+        JOIN BUSRULE_MT_CAP_DIMENSION cd ON d.DIMENSION_ID = cd.DIMENSION_ID
+        WHERE (p_dimension IS NULL AND cd.PARTNER_ID = p_partner_id)
+           OR (p_dimension IS NOT NULL AND d.NAME = p_dimension AND cd.PARTNER_ID = p_partner_id)
     ) d;
 
     RETURN v_json;
